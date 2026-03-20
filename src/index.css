@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  --color-wood-light: #d4a373;
+  --color-wood-dark: #603808;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-zinc-900 antialiased;
+  }
+}
+
+@layer utilities {
+  .dotted-border {
+    background-image: radial-gradient(circle, #e4e4e7 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .before-after-container {
+    @apply relative overflow-hidden rounded-2xl aspect-video cursor-pointer;
+  }
+  
+  .before-after-image {
+    @apply absolute inset-0 w-full h-full object-cover transition-opacity duration-700;
+  }
+  
+  .before-after-overlay {
+    @apply absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 transition-opacity duration-300;
+  }
+  
+  .before-after-container:hover .before-after-overlay {
+    @apply opacity-100;
+  }
+}
