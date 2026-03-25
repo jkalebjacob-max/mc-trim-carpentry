@@ -24,6 +24,20 @@ import {
   Instagram
 } from 'lucide-react';
 
+const GOOGLE_SCRIPT_WEB_APP_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+console.log("URL:", GOOGLE_SCRIPT_WEB_APP_URL);
+
+const postToAppsScript = async (url: string, body: string) => {
+  await fetch(url, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8",
+    },
+    body,
+  });
+};
+
 // --- Components ---
 
 const Navbar = () => {
@@ -764,7 +778,10 @@ const QuoteForm = () => {
     { item: "Waffle Ceilings", price: "$2500–$8000+" }
   ];
 
-  const [status, setStatus] = useState("idle");
+  const [status, setStatus] = useState<
+    "idle" | "sending" | "success" | "error"
+  >("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -804,7 +821,7 @@ const QuoteForm = () => {
     const confirmationText = `Hey ${name}, thanks for reaching out to MC Trim Carpenters about ${service}. We received your request and will contact you shortly. We're looking forward to helping you with your home transformation, eh!`;
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || "";
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
       if (!apiKey) {
         throw new Error("Gemini API key is missing.");
       }
@@ -847,81 +864,82 @@ const QuoteForm = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (status === "sending") return;
-    
-    // Prime the audio element on user interaction to bypass autoplay restrictions
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
+  
+    const scriptUrl =
+      typeof GOOGLE_SCRIPT_WEB_APP_URL === "string"
+        ? GOOGLE_SCRIPT_WEB_APP_URL.trim()
+        : "";
+  
+    if (!scriptUrl) {
+      const err = new Error(
+        "VITE_GOOGLE_SCRIPT_URL is missing or empty. Add it to your .env file."
+      );
+      console.error("Quote form configuration error:", err);
+      setSubmitError(
+        "This form is not available right now. Please email or call us instead."
+      );
+      setStatus("error");
+      setTimeout(() => {
+        setStatus("idle");
+        setSubmitError(null);
+      }, 8000);
+      return;
     }
-    // Playing a tiny silent sound or just calling play() on an empty source 
-    // often "unlocks" the audio context for future async play() calls.
-    audioRef.current.play().catch(() => {});
-    
+  
     setStatus("sending");
-    
+    setSubmitError(null);
+  
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
       setAudioUrl(null);
     }
-
-    const data = {
+  
+    const payload = {
       name,
       email,
       phone,
       service,
       budget,
-      message
+      message,
     };
-
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbyDZSsapzlMoc-VNINux_-1xCGzCJi2MFTlGR6HESrPy-qbYeJkhtzEPPlDu_H8f05l4Q/exec";
-
+  
+    console.log("Submitting payload:", payload);
+    console.log("Script URL:", scriptUrl);
+  
     try {
-      console.log("Submitting to Google Script and generating voice...");
-      
-      // Trigger both in parallel for maximum speed
-      const scriptPromise = fetch(scriptUrl, {
-        method: "POST",
-        mode: "no-cors",
-        body: JSON.stringify(data)
-      });
-
-      const voicePromise = generateAndPlayVoice(data.name, data.service);
-
-      // Wait for the script to at least be sent
-      await scriptPromise;
-      console.log("Data sent to Google Script URL.");
-
-      // Show success message
+      await postToAppsScript(scriptUrl, JSON.stringify(payload));
+  
+      console.log("POST request sent to Apps Script");
+  
       setStatus("success");
-      
-      // Clear form
       setName("");
       setEmail("");
       setPhone("");
       setService("");
       setBudget("");
       setMessage("");
-
-      // Voice is already running in parallel and will play when ready
-      await voicePromise;
-
-      // Auto reset after 3 seconds
+  
+      setTimeout(() => setStatus("idle"), 4000);
+    } catch (error) {
+      console.error("Form submission failed:", error);
+      setStatus("error");
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "We could not send your request. Please try again in a moment."
+      );
       setTimeout(() => {
         setStatus("idle");
-      }, 3000);
-
-    } catch (error) {
-      console.error("Submission Error:", error);
-      setStatus("error");
-      alert("Something went wrong. Please try again or call us directly.");
-      setTimeout(() => setStatus("idle"), 5000);
+        setSubmitError(null);
+      }, 8000);
     }
   };
 
   return (
-    <section id="contact" className="py-32 bg-white overflow-hidden border-t border-zinc-200">
+    <section id="quote-form" className="py-32 bg-white overflow-hidden border-t border-zinc-200">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-20">
           {/* Form Side */}
@@ -934,55 +952,107 @@ const QuoteForm = () => {
           >
             <h2 className="text-4xl font-bold text-zinc-800 mb-10 tracking-tight">Get a Free Quote</h2>
             <form className="space-y-8" onSubmit={handleSubmit}>
+              <div
+                className="min-h-[1.25rem]"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {status === "sending" && (
+                  <p className="text-amber-600 font-bold uppercase tracking-widest text-xs animate-pulse transition-opacity duration-300">
+                    Sending…
+                  </p>
+                )}
+                {status === "success" && (
+                  <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs transition-opacity duration-300">
+                    Thanks — we received your request and will be in touch soon.
+                  </p>
+                )}
+                {status === "error" && submitError && (
+                  <p className="text-rose-600 font-bold uppercase tracking-widest text-xs leading-relaxed transition-opacity duration-300">
+                    {submitError}
+                  </p>
+                )}
+              </div>
+
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Full Name</label>
-                  <input 
-                    type="text" 
+                  <label
+                    htmlFor="quote-name"
+                    className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="quote-name"
+                    type="text"
                     name="name"
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm" 
-                    placeholder="John Doe" 
+                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm"
+                    placeholder="John Doe"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Email Address</label>
-                  <input 
-                    type="email" 
+                  <label
+                    htmlFor="quote-email"
+                    className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    id="quote-email"
+                    type="email"
                     name="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm" 
-                    placeholder="john@example.com" 
+                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm"
+                    placeholder="john@example.com"
                   />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Phone Number</label>
-                  <input 
-                    type="tel" 
+                  <label
+                    htmlFor="quote-phone"
+                    className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                  >
+                    Phone Number
+                  </label>
+                  <input
+                    id="quote-phone"
+                    type="tel"
                     name="phone"
+                    autoComplete="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
-                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm" 
-                    placeholder="(647) 771-0076" 
+                    className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm"
+                    placeholder="(647) 771-0076"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Service Type</label>
-                  <select 
+                  <label
+                    htmlFor="quote-service"
+                    className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                  >
+                    Service Type
+                  </label>
+                  <select
+                    id="quote-service"
                     name="service"
                     value={service}
                     onChange={(e) => setService(e.target.value)}
                     className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all appearance-none shadow-sm"
                     required
                   >
-                    <option value="" disabled>Select a service</option>
+                    <option value="" disabled>
+                      Select a service
+                    </option>
                     <option>Trim & Finish Carpentry</option>
                     <option>Crown Moulding</option>
                     <option>Wainscoting</option>
@@ -995,71 +1065,80 @@ const QuoteForm = () => {
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Budget Range</label>
-                <select 
+                <label
+                  htmlFor="quote-budget"
+                  className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                >
+                  Budget Range
+                </label>
+                <select
+                  id="quote-budget"
                   name="budget"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                   className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all appearance-none shadow-sm"
                   required
                 >
-                  <option value="" disabled>Select a budget</option>
-                  <option>$500 – $1,500</option>
-                  <option>$1,500 – $5,000</option>
+                  <option value="" disabled>
+                    Select a budget
+                  </option>
+                  <option>$500 - $1,500</option>
+                  <option>$1,500 - $5,000</option>
                   <option>$5,000+</option>
                 </select>
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Project Description</label>
-                <textarea 
+                <label
+                  htmlFor="quote-message"
+                  className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]"
+                >
+                  Message
+                </label>
+                <textarea
+                  id="quote-message"
                   name="message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
-                  rows={4} 
-                  className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm" 
-                  placeholder="Tell us about your project..."
-                ></textarea>
+                  rows={4}
+                  className="w-full bg-white border border-zinc-200 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-amber-600 outline-none transition-all shadow-sm resize-y min-h-[7rem]"
+                  placeholder="Tell us about your project…"
+                />
               </div>
-              {status === "sending" && (
-                <p className="text-amber-600 font-bold uppercase tracking-widest text-xs animate-pulse">Sending request...</p>
-              )}
-              {status === "success" && (
-                <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs">Request sent successfully</p>
-              )}
-              {status === "error" && (
-                <p className="text-rose-600 font-bold uppercase tracking-widest text-xs">Something went wrong. Please try again.</p>
-              )}
               <div className="flex flex-col gap-6">
                 {audioUrl && (
-                  <motion.button 
+                  <motion.button
                     type="button"
                     whileHover={{ scale: 1.02, backgroundColor: "#18181b" }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       if (audioRef.current) {
                         audioRef.current.currentTime = 0;
-                        audioRef.current.play().catch(e => console.error("Playback failed:", e));
+                        audioRef.current
+                          .play()
+                          .catch((e) => console.error("Playback failed:", e));
                       }
                     }}
                     className="w-full bg-zinc-800 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-200"
                   >
-                    <span className="text-xl">🔊</span> Replay Confirmation Message
+                    <span className="text-xl">🔊</span> Replay Confirmation
+                    Message
                   </motion.button>
                 )}
-                
-                <motion.button 
+
+                <motion.button
+                  id="quote-form-submit"
                   type="submit"
-                  whileHover={{ 
-                    scale: 1.02, 
+                  whileHover={{
+                    scale: 1.02,
                     backgroundColor: "#b45309",
-                    boxShadow: "0 20px 40px -10px rgba(217, 119, 6, 0.3)"
+                    boxShadow: "0 20px 40px -10px rgba(217, 119, 6, 0.3)",
                   }}
                   whileTap={{ scale: 0.98 }}
                   disabled={status === "sending"}
-                  className={`w-full bg-amber-600 text-white font-bold py-5 rounded-2xl transition-all shadow-2xl shadow-amber-900/20 text-lg ${status === "sending" ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-amber-600 text-white font-bold py-5 rounded-2xl transition-all shadow-2xl shadow-amber-900/20 text-lg ${status === "sending" ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
-                  {status === "sending" ? 'Sending...' : 'Submit Request'}
+                  {status === "sending" ? "Sending…" : "Submit request"}
                 </motion.button>
               </div>
             </form>
@@ -1111,7 +1190,7 @@ const QuoteForm = () => {
 
 const Footer = () => {
   return (
-    <footer className="bg-zinc-950 text-white py-24 border-t border-white/5">
+    <footer id="contact" className="bg-zinc-950 text-white py-24 border-t border-white/5">
       <motion.div 
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
@@ -1179,7 +1258,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-amber-500" />
-                <span>info@mctrim.ca</span>
+                <span>miltchagas@gmail.com</span>
               </li>
             </ul>
           </div>

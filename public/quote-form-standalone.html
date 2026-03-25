@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quote request</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --card: #ffffff;
+        --border: #e4e4e7;
+        --text: #18181b;
+        --muted: #71717a;
+        --accent: #d97706;
+        --accent-hover: #b45309;
+        --success: #059669;
+        --error: #e11d48;
+        --radius: 1rem;
+        --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        padding: clamp(1.5rem, 4vw, 3rem);
+      }
+
+      .wrap {
+        max-width: 36rem;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: clamp(1.5rem, 4vw, 1.875rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.5rem;
+      }
+
+      .sub {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin: 0 0 2rem;
+      }
+
+      form {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: calc(var(--radius) * 1.5);
+        padding: clamp(1.25rem, 3vw, 2rem);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+
+      .status {
+        min-height: 1.25rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status[data-state="sending"] {
+        color: var(--accent);
+      }
+
+      .status[data-state="success"] {
+        color: var(--success);
+      }
+
+      .status[data-state="error"] {
+        color: var(--error);
+        text-transform: none;
+        letter-spacing: 0.02em;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      .field {
+        margin-bottom: 1.25rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        font: inherit;
+        padding: 0.875rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        color: var(--text);
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+      }
+
+      textarea {
+        min-height: 7rem;
+        resize: vertical;
+      }
+
+      .row {
+        display: grid;
+        gap: 1rem;
+      }
+
+      @media (min-width: 32rem) {
+        .row-2 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      button[type="submit"] {
+        width: 100%;
+        margin-top: 0.5rem;
+        padding: 1rem 1.25rem;
+        font: inherit;
+        font-weight: 700;
+        font-size: 1rem;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+        box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+      }
+
+      button[type="submit"]:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      button[type="submit"]:active:not(:disabled) {
+        transform: scale(0.99);
+      }
+
+      button[type="submit"]:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Get a free quote</h1>
+      <p class="sub">We’ll get back to you shortly.</p>
+
+      <form id="quote-form">
+        <div
+          id="form-status"
+          class="status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
+
+        <div class="row row-2">
+          <div class="field">
+            <label for="quote-name">Full name</label>
+            <input
+              id="quote-name"
+              name="name"
+              type="text"
+              autocomplete="name"
+              required
+              placeholder="John Doe"
+            />
+          </div>
+          <div class="field">
+            <label for="quote-email">Email</label>
+            <input
+              id="quote-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              placeholder="you@example.com"
+            />
+          </div>
+        </div>
+
+        <div class="row row-2">
+          <div class="field">
+            <label for="quote-phone">Phone</label>
+            <input
+              id="quote-phone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              required
+              placeholder="(555) 000-0000"
+            />
+          </div>
+          <div class="field">
+            <label for="quote-service">Service</label>
+            <select id="quote-service" name="service" required>
+              <option value="" disabled selected>Select a service</option>
+              <option>Trim &amp; finish carpentry</option>
+              <option>Crown moulding</option>
+              <option>Wainscoting</option>
+              <option>Feature walls</option>
+              <option>Built-in cabinetry</option>
+              <option>Fireplace renovations</option>
+              <option>Custom shelving</option>
+              <option>Waffle ceilings</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="quote-budget">Budget</label>
+          <select id="quote-budget" name="budget" required>
+            <option value="" disabled selected>Select a range</option>
+            <option>$500 – $1,500</option>
+            <option>$1,500 – $5,000</option>
+            <option>$5,000+</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="quote-notes">Notes</label>
+          <textarea
+            id="quote-notes"
+            name="notes"
+            required
+            placeholder="Tell us about your project…"
+          ></textarea>
+        </div>
+
+        <button id="quote-form-submit" type="submit">Submit request</button>
+      </form>
+    </div>
+
+    <script>
+      (function () {
+        const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbz_evrQ8hxyFB0vwp4WrGuQ3cMOJa-VY9F2lX5QKpDLOvwJkx1ZrxwwMnIDbUCquuUW/exec";
+
+        const form = document.getElementById("quote-form");
+        const statusEl = document.getElementById("form-status");
+        const submitBtn = document.getElementById("quote-form-submit");
+
+        function setStatus(state, message) {
+          statusEl.textContent = message || "";
+          statusEl.dataset.state = state;
+        }
+
+        function readPayload() {
+          const fd = new FormData(form);
+          return {
+            name: String(fd.get("name") || "").trim(),
+            email: String(fd.get("email") || "").trim(),
+            phone: String(fd.get("phone") || "").trim(),
+            service: String(fd.get("service") || "").trim(),
+            budget: String(fd.get("budget") || "").trim(),
+            notes: String(fd.get("notes") || "").trim(),
+          };
+        }
+
+        function clearForm() {
+          form.reset();
+        }
+
+        async function postToAppsScript(body) {
+          const response = await fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            redirect: "follow",
+          });
+
+          const text = await response.text();
+          console.log("[Apps Script] response:", response.status, text);
+
+          if (!response.ok) {
+            console.error("[Apps Script] error:", response.status, text);
+            throw new Error(
+              (text && text.trim().slice(0, 160)) ||
+                "Request failed (" + response.status + ")"
+            );
+          }
+
+          return text;
+        }
+
+        form.addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          if (!form.reportValidity()) {
+            return;
+          }
+
+          const payload = readPayload();
+          const body = JSON.stringify(payload);
+
+          submitBtn.disabled = true;
+          setStatus("sending", "Sending…");
+
+          try {
+            try {
+              await postToAppsScript(body);
+            } catch (err) {
+              const isNetwork =
+                err instanceof TypeError ||
+                (err instanceof Error &&
+                  /failed to fetch|networkerror|load failed/i.test(
+                    err.message
+                  ));
+
+              if (!isNetwork) {
+                throw err;
+              }
+
+              console.error(
+                "[Apps Script] primary POST failed (often CORS). Retrying no-cors:",
+                err
+              );
+
+              await fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body,
+                redirect: "follow",
+              });
+            }
+
+            setStatus(
+              "success",
+              "Thanks — we received your request and will be in touch soon."
+            );
+            clearForm();
+
+            setTimeout(function () {
+              setStatus("", "");
+              submitBtn.disabled = false;
+            }, 4000);
+          } catch (error) {
+            console.error("Form submission failed:", error);
+            const msg =
+              error instanceof Error
+                ? error.message
+                : "We could not send your request. Please try again.";
+            setStatus("error", msg);
+            submitBtn.disabled = false;
+
+            setTimeout(function () {
+              setStatus("", "");
+            }, 8000);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
