@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Modality } from "@google/genai";
 import { 
   Hammer, 
   ChevronRight, 
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react';
 
 const GOOGLE_SCRIPT_WEB_APP_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
-console.log("URL:", GOOGLE_SCRIPT_WEB_APP_URL);
 
 const postToAppsScript = async (url: string, body: string) => {
   await fetch(url, {
@@ -782,86 +780,35 @@ const QuoteForm = () => {
     "idle" | "sending" | "success" | "error"
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Helper to wrap raw PCM in a WAV header
-  const wrapWav = (pcmData: Uint8Array, sampleRate: number = 24000) => {
-    const buffer = new ArrayBuffer(44 + pcmData.length);
-    const view = new DataView(buffer);
+  const validateSubmission = () => {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedMessage = message.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneDigits = trimmedPhone.replace(/\D/g, "");
 
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
-
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + pcmData.length, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true); // PCM format
-    view.setUint16(22, 1, true); // Mono
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true); // Byte rate
-    view.setUint16(32, 2, true); // Block align
-    view.setUint16(34, 16, true); // Bits per sample
-    writeString(36, 'data');
-    view.setUint32(40, pcmData.length, true);
-
-    for (let i = 0; i < pcmData.length; i++) {
-      view.setUint8(44 + i, pcmData[i]);
+    if (
+      !trimmedName ||
+      !trimmedEmail ||
+      !trimmedPhone ||
+      !service ||
+      !budget ||
+      !trimmedMessage
+    ) {
+      return "Please complete all required fields before submitting.";
     }
 
-    return new Blob([buffer], { type: 'audio/wav' });
-  };
-
-  const generateAndPlayVoice = async (name: string, service: string) => {
-    const confirmationText = `Hey ${name}, thanks for reaching out to MC Trim Carpenters about ${service}. We received your request and will contact you shortly. We're looking forward to helping you with your home transformation, eh!`;
-
-    try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-      if (!apiKey) {
-        throw new Error("Gemini API key is missing.");
-      }
-      
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Say this in a strongly Canadian accent male voice that's engaging and professional: ${confirmationText}` }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Fenrir' },
-            },
-          },
-        },
-      });
-
-      const part = response.candidates?.[0]?.content?.parts?.[0];
-      const base64Audio = part?.inlineData?.data;
-      
-      if (base64Audio) {
-        const binaryString = atob(base64Audio);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        const blob = wrapWav(bytes, 24000);
-        const audioUrl = URL.createObjectURL(blob);
-        setAudioUrl(audioUrl);
-        
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          audioRef.current.play().catch(e => console.error("Auto-play failed after generation:", e));
-        }
-      }
-    } catch (err) {
-      console.error("Voice error:", err);
+    if (!emailPattern.test(trimmedEmail)) {
+      return "Please enter a valid email address.";
     }
+
+    if (phoneDigits.length < 10) {
+      return "Please enter a valid phone number.";
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -889,30 +836,31 @@ const QuoteForm = () => {
       return;
     }
   
+    const validationError = validateSubmission();
+    if (validationError) {
+      setSubmitError(validationError);
+      setStatus("error");
+      setTimeout(() => {
+        setStatus("idle");
+        setSubmitError(null);
+      }, 8000);
+      return;
+    }
+
     setStatus("sending");
     setSubmitError(null);
   
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
-      setAudioUrl(null);
-    }
-  
     const payload = {
-      name,
-      email,
-      phone,
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
       service,
       budget,
-      message,
+      message: message.trim(),
     };
-  
-    console.log("Submitting payload:", payload);
-    console.log("Script URL:", scriptUrl);
   
     try {
       await postToAppsScript(scriptUrl, JSON.stringify(payload));
-  
-      console.log("POST request sent to Apps Script");
   
       setStatus("success");
       setName("");
@@ -1106,26 +1054,6 @@ const QuoteForm = () => {
                 />
               </div>
               <div className="flex flex-col gap-6">
-                {audioUrl && (
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02, backgroundColor: "#18181b" }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      if (audioRef.current) {
-                        audioRef.current.currentTime = 0;
-                        audioRef.current
-                          .play()
-                          .catch((e) => console.error("Playback failed:", e));
-                      }
-                    }}
-                    className="w-full bg-zinc-800 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-200"
-                  >
-                    <span className="text-xl">🔊</span> Replay Confirmation
-                    Message
-                  </motion.button>
-                )}
-
                 <motion.button
                   id="quote-form-submit"
                   type="submit"
