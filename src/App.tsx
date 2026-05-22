@@ -36,6 +36,13 @@ const postToAppsScript = async (url: string, body: string) => {
   });
 };
 
+const scrollToQuote = () => {
+  document.getElementById("quote")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+};
+
 // --- Components ---
 
 const Navbar = () => {
@@ -90,7 +97,7 @@ const Navbar = () => {
             </motion.a>
           ))}
           <motion.a 
-            href="#contact" 
+            href="#quote" 
             whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(245, 158, 11, 0.2)" }}
             whileTap={{ scale: 0.95 }}
             className="bg-zinc-900 hover:bg-zinc-800 text-white px-7 py-3 rounded-full text-sm font-semibold transition-all duration-500 shadow-lg shadow-black/20 border border-white/10"
@@ -128,8 +135,12 @@ const Navbar = () => {
               </a>
             ))}
             <a 
-              href="#contact" 
-              onClick={() => setIsMobileMenuOpen(false)}
+              href="#quote" 
+              onClick={(e) => {
+                e.preventDefault();
+                setIsMobileMenuOpen(false);
+                scrollToQuote();
+              }}
               className="bg-amber-600 text-white px-6 py-3 rounded-xl text-center font-semibold"
             >
               Get a Free Quote
@@ -176,7 +187,7 @@ const Hero = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-6">
             <motion.a 
-              href="#contact" 
+              href="#quote" 
               whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(245, 158, 11, 0.3)" }}
               whileTap={{ scale: 0.95 }}
               className="bg-amber-600 hover:bg-amber-700 text-white px-10 py-5 rounded-full text-lg font-bold transition-all duration-500 flex items-center justify-center gap-2 shadow-2xl shadow-amber-900/40"
@@ -317,7 +328,7 @@ const Portfolio = () => {
           </div>
           <div className="hidden md:block h-px flex-1 bg-zinc-100 mx-12" />
           <motion.a 
-            href="#contact" 
+            href="#quote" 
             whileHover={{ scale: 1.05, color: "#d97706" }}
             className="inline-flex items-center gap-2 text-amber-600 font-bold text-lg group transition-all duration-300"
           >
@@ -887,7 +898,7 @@ const QuoteForm = () => {
   };
 
   return (
-    <section id="quote-form" className="py-32 bg-white overflow-hidden border-t border-zinc-200">
+    <section id="quote" className="scroll-mt-28 py-32 bg-white overflow-hidden border-t border-zinc-200">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-20">
           {/* Form Side */}
@@ -1235,7 +1246,7 @@ const FinalCTA = () => {
           <motion.a 
             whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(245, 158, 11, 0.3)" }}
             whileTap={{ scale: 0.98 }}
-            href="#contact" 
+            href="#quote" 
             className="inline-flex items-center gap-3 bg-amber-600 text-white px-12 py-5 rounded-full text-lg font-bold transition-all shadow-2xl shadow-amber-900/40"
           >
             Get a Free Quote <ChevronRight className="w-5 h-5" />
@@ -1276,7 +1287,11 @@ export default function App() {
       {/* Sticky Mobile CTA */}
       <div className="fixed bottom-6 left-6 right-6 z-40 md:hidden">
         <a 
-          href="#contact" 
+          href="#quote" 
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToQuote();
+          }}
           className="flex items-center justify-center gap-2 bg-zinc-900 text-white py-4 rounded-2xl font-bold shadow-2xl shadow-black/40 border border-white/10"
         >
           <Phone className="w-5 h-5" /> Get a Free Quote
